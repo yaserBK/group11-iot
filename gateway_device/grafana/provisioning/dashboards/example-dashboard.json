@@ -1,0 +1,21 @@
+{
+  "id": null,
+  "uid": "sensor-dashboard",
+  "title": "Sensor Data",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Sensor Value",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"mybucket\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"sensor_data\") |> yield()"
+        }
+      ],
+      "gridPos": {"x":0,"y":0,"w":24,"h":9}
+    }
+  ],
+  "schemaVersion": 30,
+  "version": 1
+}
