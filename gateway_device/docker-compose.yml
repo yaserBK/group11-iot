@@ -5,32 +5,44 @@ services:
     restart: unless-stopped
     ports:
       - "8086:8086"
+    env_file:
+      - .env
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
-      - DOCKER_INFLUXDB_INIT_ORG=my-org
-      - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
-      - DOCKER_INFLUXDB_INIT_RETENTION=30d
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUX_USER}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_PASS}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUX_BUCKET}
     volumes:
-      - influxdb_data:/var/lib/influxdb2
+      - influxdb-data:/var/lib/influxdb2
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - influxdb
     volumes:
-      - grafana_data:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  sensor_app:
+    build: ./gateway_server
+    container_name: gateway_server
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    env_file:
+      - .env
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"  # Map your USB serial device from host
+    privileged: true  # Required for serial port access
 
 volumes:
-  influxdb_data:
-  grafana_data:
-
+  influxdb-data:
+  grafana-data:
