@@ -58,10 +58,10 @@ while True:
             message = uart_service.readline().decode("utf-8").rstrip()
             try:
                 values = message.split(",")
-                if len(values) >= 5:
+                if len(values) >= 6:
                     pH = float(values[1])
                     tds = float(values[2])
-                    water_level = float(values[3])
+                    water_level = float(values[3]
                     temperature = float(values[4])
                     humidity = float(values[5])
                     water_temp = float(values[6])
