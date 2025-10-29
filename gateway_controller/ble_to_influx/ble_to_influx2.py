@@ -59,11 +59,11 @@ while True:
             try:
                 values = message.split(",")
                 if len(values) >= 5:
-                    pH = float(values[0])
-                    tds = float(values[1])
-                    temperature = float(values[2])
-                    humidity = float(values[3])
-                    water_temp = float(values[4])
+                    pH = float(values[1])
+                    tds = float(values[2])
+                    temperature = float(values[3])
+                    humidity = float(values[4])
+                    water_temp = float(values[5])
 
                     point = [{
                         "measurement": "sensor_data",
