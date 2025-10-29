@@ -2,42 +2,54 @@
 services:
   influxdb:
     image: influxdb:2.7
+    platform: linux/arm64  # or linux/arm/v7 if you're on a 32-bit Pi OS
     container_name: influxdb
+    restart: always
     ports:
       - "8086:8086"
     environment:
-      DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: admin123
-      DOCKER_INFLUXDB_INIT_ORG: group11_org
-      DOCKER_INFLUXDB_INIT_BUCKET: group11_bucket
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=my-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=sensor_data
+      - DOCKER_INFLUXDB_INIT_RETENTION=1w
     volumes:
-      - influxdb-data:/var/lib/influxdb2
+      - influxdb_data:/var/lib/influxdb2
+      - ./influxdb/influxdb.conf:/etc/influxdb/influxdb.conf
 
   grafana:
-    image: grafana/grafana:9.8.3
+    image: grafana/grafana-oss:latest
+    platform: linux/arm64  # or linux/arm/v7 if 32-bit
     container_name: grafana
+    restart: always
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
     depends_on:
       - influxdb
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
 
   ble_to_influx:
     build: ./ble_to_influx
+    platform: linux/arm64
     container_name: ble_to_influx
-    network_mode: host
-    privileged: true
+    network_mode: host              # allows access to BLE device on the host
+    privileged: true                # required for Bluetooth access
     volumes:
-      - /var/run/dbus:/var/run/dbus
+      - /var/run/dbus:/var/run/dbus # gives access to D-Bus for BLE
     devices:
-      - /dev/hci0:/dev/hci0
+      - /dev/hci0:/dev/hci0         # exposes Bluetooth adapter
     depends_on:
       - influxdb
     restart: always
 
 volumes:
-  influxdb-data:
-
+  influxdb_data:
+  grafana_data:
