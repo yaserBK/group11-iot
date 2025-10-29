@@ -28,16 +28,22 @@ def notification_handler(sender, data):
 
         # Assume CSV format from your Feathersense: "temperature,humidity"
         values = message.split(",")
-        if len(values) >= 2:
-            temperature = float(values[0])
-            humidity = float(values[1])
+        if len(values) >= 5:
+            pH = float(values[0])
+            tds = float(values[1])
+            temperature = float(values[2])
+            humidity = float(values[3])
+            water_temp = float(values[4])
 
             # Write to InfluxDB
             point = [{
                 "measurement": "sensor_data",
                 "fields": {
+                    "pH":pH,
+                    "TDS":tds,
                     "temperature": temperature,
-                    "humidity": humidity
+                    "humidity": humidity,
+                    "water_temp":water_temp
                 }
             }]
             client_influx.write_points(point)
