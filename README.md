@@ -2,13 +2,11 @@
 
 This repository sets up persistant containerized volumes for Grafana and InfluxDB, specifically for the ARM processor architecture on Raspberry Pi's running a 32Bit OS. The docker-compose.yml can be updated as necessary to enable one to prop-up these containers on a range of alternative hardware and operating systems.
 
-
-
 Requirements:
 1. Docker
 2. Docker Compose
-3. Python3
-
+3. Python
+4. A Raspberry Pi or any other wireless network capable computer. 
 
 ## Setup
 ### Grafana and Influx
