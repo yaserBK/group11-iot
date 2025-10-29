@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+from --platform=linux/arm/v7 python:3.11-slim-bullseye
 
 # Ensure BLE libraries are available
 RUN apt-get update && apt-get install -y \
