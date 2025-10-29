@@ -1,0 +1,17 @@
+# This file automatically configures the InfluxDB data source in Grafana
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-Greenhouse
+    type: influxdb
+    access: proxy
+    # Connect to InfluxDB using the service name
+    url: http://influxdb:8086
+    jsonData:
+      version: Flux
+      organization: default-org
+      defaultBucket: default-bucket
+      tlsSkipVerify: true
+    # Use the simplified admin token
+    secureJsonData:
+      token: admin-token
