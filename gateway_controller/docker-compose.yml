@@ -28,7 +28,12 @@ services:
   ble_to_influx:
     build: ./ble_to_influx
     container_name: ble_to_influx
-    network_mode: host  # Required for BLE access on Raspberry Pi
+    network_mode: host
+    privileged: true
+    volumes:
+      - /var/run/dbus:/var/run/dbus
+    devices:
+      - /dev/hci0:/dev/hci0
     depends_on:
       - influxdb
     restart: always
