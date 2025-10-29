@@ -4,35 +4,38 @@ This repository sets up persistant containerized volumes for Grafana and InfluxD
 
 
 
+Requirements:
+1. Docker
+2. Docker Compose
+3. Python3
+
 
 ## Setup
 ### Grafana and Influx
 
-1. Install Docker and Docker Compose on your Raspberry Pi.
-2. Clone this repository.
-3. Build and run Grafana and InfluxDb Contaienrs by running the following command from the pojrect root
+Starting in the "gateway_controller/" directory: Build and run Grafana and InfluxDb Contaienrs by running the following command from the pojrect root
 
-   ```bash
-   docker-compose up --build -d grafana influxdb
-   ```
+```bash
+docker-compose up --build -d grafana influxdb
+```
    
 ### The Gateway Reciever Script
 
-1. Navigate into the ble_to_influx directory and run the following commands:
+1. Run the following commands in the "gateway_controller/" directory to create a python virtual environment on your device:
 
 ```bash
 $ python3 -m venv .
 $ source ./bin/activate   
 ```
 
-5. Install necessary dependencies by running 
+5. Install necessary dependencies
 ```
 $ pip install -r requirements.txt
 ```
 
-6. Finally, start the gateway controller script:
+6. Start the gateway controller script
 ```
-python3 ble_to_influx2.py
+python3 gateway_controller.py
 ```
 
 Note: 
