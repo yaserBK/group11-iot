@@ -1,0 +1,36 @@
+{
+  "id": null,
+  "title": "Feathersense Live Dashboard",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Temperature (°C)",
+      "gridPos": {"x":0,"y":0,"w":12,"h":6},
+      "targets": [
+        {
+          "measurement": "sensor_data",
+          "groupBy": [{"type":"time","params":["$__interval"]}],
+          "select": [{"type":"field","params":["temperature"]}],
+          "refId": "A"
+        }
+      ],
+      "datasource": "InfluxDB"
+    },
+    {
+      "type": "graph",
+      "title": "Humidity (%)",
+      "gridPos": {"x":0,"y":6,"w":12,"h":6},
+      "targets": [
+        {
+          "measurement": "sensor_data",
+          "groupBy": [{"type":"time","params":["$__interval"]}],
+          "select": [{"type":"field","params":["humidity"]}],
+          "refId": "B"
+        }
+      ],
+      "datasource": "InfluxDB"
+    }
+  ],
+  "schemaVersion": 27,
+  "version": 1
+}

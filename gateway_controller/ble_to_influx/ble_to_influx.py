@@ -1,21 +1,24 @@
 import asyncio
 from bleak import BleakClient, BleakError
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb import InfluxDBClient
 
 # BLE device info
 DEVICE_ADDRESS = "DA:19:2D:10:EE:86"
 UART_RX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
-# InfluxDB info
-INFLUX_URL = "http://localhost:8086"
-INFLUX_TOKEN = "admin123"
-INFLUX_ORG = "group11_org"
-INFLUX_BUCKET = "group11_bucket"
+# InfluxDB 1.8 info
+INFLUX_HOST = "influxdb"   # use service name in Docker Compose
+INFLUX_PORT = 8086
+INFLUX_USER = "admin"
+INFLUX_PASSWORD = "admin123"
+INFLUX_DB = "sensor_data"
 
-# Setup InfluxDB client
-client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
-write_api = client.write_api(write_options=SYNCHRONOUS)
+# Setup InfluxDB 1.x client
+client_influx = InfluxDBClient(
+    host=INFLUX_HOST, port=INFLUX_PORT,
+    username=INFLUX_USER, password=INFLUX_PASSWORD,
+    database=INFLUX_DB
+)
 
 def notification_handler(sender, data):
     """Called when BLE device sends data."""
@@ -30,12 +33,14 @@ def notification_handler(sender, data):
             humidity = float(values[1])
 
             # Write to InfluxDB
-            point = (
-                Point("sensor_data")
-                .field("temperature", temperature)
-                .field("humidity", humidity)
-            )
-            write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
+            point = [{
+                "measurement": "sensor_data",
+                "fields": {
+                    "temperature": temperature,
+                    "humidity": humidity
+                }
+            }]
+            client_influx.write_points(point)
 
     except Exception as e:
         print(f"Error parsing/writing data: {e}")
@@ -60,4 +65,3 @@ async def connect_and_listen():
 
 if __name__ == "__main__":
     asyncio.run(connect_and_listen())
-
