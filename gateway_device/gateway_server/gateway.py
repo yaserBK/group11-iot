@@ -1,31 +1,37 @@
-import os
-import serial
-from influxdb_client import InfluxDBClient, Point, WritePrecision
+import asyncio
+from bleak import BleakClient, BleakScanner, BleakError
 
-# UART device (Bluetooth RFCOMM)
-UART_PORT = os.getenv("UART_PORT", "/dev/rfcomm0")
-BAUD_RATE = int(os.getenv("BAUD_RATE", 9600))
+DEVICE_ADDRESS = "DA:19:2D:10:EE:86"
+UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+UART_RX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"  # Notify from device
+UART_TX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"  # Write to device
 
-# InfluxDB config
-INFLUX_URL = os.getenv("INFLUX_URL", "http://influxdb:8086")
-INFLUX_TOKEN = os.getenv("INFLUX_TOKEN", "your_token")
-INFLUX_ORG = os.getenv("INFLUX_ORG", "your_org")
-INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "mybucket")
+def notification_handler(sender, data):
+    """Called when new data is received from the device."""
+    print(f"Received: {data.decode('utf-8').strip()}")
 
-# Connect to InfluxDB
-client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
-write_api = client.write_api(write_options=WritePrecision.NS)
+async def connect_and_listen():
+    while True:
+        try:
+            print(f"Connecting to {DEVICE_ADDRESS}...")
+            async with BleakClient(DEVICE_ADDRESS) as client:
+                if await client.is_connected():
+                    print("Connected successfully!")
+                    
+                    # Start listening for notifications
+                    await client.start_notify(UART_RX_CHAR_UUID, notification_handler)
+                    
+                    # Keep the connection alive
+                    while await client.is_connected():
+                        await asyncio.sleep(1)
+                    
+                    print("Device disconnected, retrying...")
+        except BleakError as e:
+            print(f"Connection failed: {e}. Retrying in 5 seconds...")
+            await asyncio.sleep(5)
+        except Exception as e:
+            print(f"Unexpected error: {e}. Retrying in 5 seconds...")
+            await asyncio.sleep(5)
 
-# Connect to UART
-ser = serial.Serial(UART_PORT, BAUD_RATE)
-print(f"Listening on {UART_PORT} at {BAUD_RATE} baud")
-
-while True:
-    line = ser.readline().decode('utf-8').strip()
-    print("Received:", line)
-    try:
-        value = float(line)  # Adjust parsing for your sensor
-        point = Point("sensor_data").field("value", value)
-        write_api.write(bucket=INFLUX_BUCKET, record=point)
-    except ValueError:
-        print(f"Could not convert '{line}' to float")
+if __name__ == "__main__":
+    asyncio.run(connect_and_listen())

@@ -1,0 +1,38 @@
+
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin123
+      DOCKER_INFLUXDB_INIT_ORG: group11_org
+      DOCKER_INFLUXDB_INIT_BUCKET: group11_bucket
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+
+  grafana:
+    image: grafana/grafana:9.8.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    depends_on:
+      - influxdb
+
+  ble_to_influx:
+    build: ./ble_to_influx
+    container_name: ble_to_influx
+    network_mode: host  # Required for BLE access on Raspberry Pi
+    depends_on:
+      - influxdb
+    restart: always
+
+volumes:
+  influxdb-data:
+
