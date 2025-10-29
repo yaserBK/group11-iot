@@ -20,7 +20,7 @@ INFLUX_DB = "sensor_data"
 # ------------------------
 # Setup InfluxDB client
 # ------------------------
-influx_client = InfluxDBClient(
+influxdb_client = InfluxDBClient(
     host=INFLUX_HOST,
     port=INFLUX_PORT,
     username=INFLUX_USER,
@@ -31,13 +31,13 @@ influx_client = InfluxDBClient(
 # ------------------------
 # BLE notification handler
 # ------------------------
-def notification_handler(sender, data):
+def ble_notification_handler(sender, data):
     """Called when BLE device sends data."""
     try:
         message = data.decode("utf-8").strip()
         print(f"Received: {message}")
 
-        # Assume CSV format: "pH,TDS,temperature,humidity,water_temp"
+        # CSV format: "pH,TDS,temperature,humidity,water_temp"
         values = message.split(",")
         if len(values) >= 5:
             pH = float(values[0])
@@ -46,7 +46,7 @@ def notification_handler(sender, data):
             humidity = float(values[3])
             water_temp = float(values[4])
 
-            # Write to InfluxDB
+            # Prepare InfluxDB point
             point = [{
                 "measurement": "sensor_data",
                 "fields": {
@@ -57,7 +57,8 @@ def notification_handler(sender, data):
                     "water_temp": water_temp
                 }
             }]
-            influx_client.write_points(point)
+            influxdb_client.write_points(point)
+
     except Exception as e:
         print(f"Error parsing/writing data: {e}")
 
@@ -69,15 +70,16 @@ async def connect_and_listen():
         try:
             print(f"Connecting to {DEVICE_ADDRESS}...")
             async with BleakClient(DEVICE_ADDRESS) as ble_client:
-                if await ble_client.is_connected():
+                connected_status = await ble_client.is_connected()
+                if connected_status:
                     print("Connected successfully!")
-                    await ble_client.start_notify(UART_RX_CHAR_UUID, notification_handler)
+                    await ble_client.start_notify(UART_RX_CHAR_UUID, ble_notification_handler)
 
                     # Keep connection alive
                     while await ble_client.is_connected():
                         await asyncio.sleep(1)
 
-                    print("Device disconnected, retrying in 5s...")
+                    print("Device disconnected, retrying in 5 seconds...")
                     await asyncio.sleep(5)
 
         except BleakError as e:
