@@ -45,7 +45,7 @@ while True:
             for svc in adv.services:
                 print(str(svc))
             # Look for UART service and establish connection
-            if UARTService in adv.services:
+            if UARTService in adv.services and adv.complete_name == "group11":
                 uart_connection = ble.connect(adv)
                 print("Connected")
                 break
