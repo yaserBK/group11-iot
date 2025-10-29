@@ -7,19 +7,18 @@ from influxdb import InfluxDBClient
 # ------------------------
 DEVICE_ADDRESS = "DA:19:2D:10:EE:86"
 UART_RX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+EXPECTED_HANDSHAKE = "HANDSHAKE_GROUP11"
+ACK_MESSAGE = "ACK_HANDSHAKE"
 
 # ------------------------
 # InfluxDB 1.8 info
 # ------------------------
-INFLUX_HOST = "influxdb"       # Docker Compose service name
+INFLUX_HOST = "influxdb"
 INFLUX_PORT = 8086
 INFLUX_USER = "admin"
 INFLUX_PASSWORD = "admin123"
 INFLUX_DB = "sensor_data"
 
-# ------------------------
-# Setup InfluxDB client
-# ------------------------
 influxdb_client = InfluxDBClient(
     host=INFLUX_HOST,
     port=INFLUX_PORT,
@@ -31,13 +30,30 @@ influxdb_client = InfluxDBClient(
 # ------------------------
 # BLE notification handler
 # ------------------------
-def ble_notification_handler(sender, data):
-    """Called when BLE device sends data."""
-    try:
-        message = data.decode("utf-8").strip()
-        print(f"Received: {message}")
+handshake_verified = False
+ble_client_global = None
 
-        # CSV format: "pH,TDS,temperature,humidity,water_temp"
+async def send_ack():
+    """Send ACK to sensor to complete handshake."""
+    if ble_client_global:
+        await ble_client_global.write_gatt_char(UART_RX_CHAR_UUID, (ACK_MESSAGE + "\r\n").encode("utf-8"))
+        print("Sent ACK_HANDSHAKE to sensor")
+
+def ble_notification_handler(sender, data):
+    global handshake_verified
+    message = data.decode("utf-8").strip()
+    
+    if not handshake_verified:
+        if EXPECTED_HANDSHAKE in message:
+            handshake_verified = True
+            print("Handshake verified from sensor")
+            asyncio.create_task(send_ack())  # send ACK back
+        else:
+            print(f"Ignoring unexpected handshake/data: {message}")
+        return
+
+    # Parse sensor data after handshake
+    try:
         values = message.split(",")
         if len(values) >= 5:
             pH = float(values[0])
@@ -46,7 +62,6 @@ def ble_notification_handler(sender, data):
             humidity = float(values[3])
             water_temp = float(values[4])
 
-            # Prepare InfluxDB point
             point = [{
                 "measurement": "sensor_data",
                 "fields": {
@@ -58,7 +73,7 @@ def ble_notification_handler(sender, data):
                 }
             }]
             influxdb_client.write_points(point)
-
+            print(f"Stored data: {message}")
     except Exception as e:
         print(f"Error parsing/writing data: {e}")
 
@@ -66,16 +81,18 @@ def ble_notification_handler(sender, data):
 # BLE connect & listen loop
 # ------------------------
 async def connect_and_listen():
+    global handshake_verified, ble_client_global
     while True:
         try:
             print(f"Connecting to {DEVICE_ADDRESS}...")
             async with BleakClient(DEVICE_ADDRESS) as ble_client:
+                ble_client_global = ble_client
                 connected_status = await ble_client.is_connected()
                 if connected_status:
                     print("Connected successfully!")
+                    handshake_verified = False  # reset handshake on new connection
                     await ble_client.start_notify(UART_RX_CHAR_UUID, ble_notification_handler)
 
-                    # Keep connection alive
                     while await ble_client.is_connected():
                         await asyncio.sleep(1)
 
