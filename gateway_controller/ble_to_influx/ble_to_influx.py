@@ -1,7 +1,10 @@
 import asyncio
 from bleak import BleakClient, BleakError
 from influxdb import InfluxDBClient
+import os
 
+# Bring the HCI interface up to ensure container has full control
+os.system("hciconfig hci0 up")
 # ------------------------
 # BLE device info
 # ------------------------
