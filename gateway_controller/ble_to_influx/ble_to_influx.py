@@ -1,10 +1,13 @@
 import asyncio
+import os
 from bleak import BleakClient, BleakError
 from influxdb import InfluxDBClient
-import os
 
-# Bring the HCI interface up to ensure container has full control
+# ------------------------
+# Ensure BLE adapter is up
+# ------------------------
 os.system("hciconfig hci0 up")
+
 # ------------------------
 # BLE device info
 # ------------------------
@@ -14,9 +17,9 @@ EXPECTED_HANDSHAKE = "HANDSHAKE_GROUP11"
 ACK_MESSAGE = "ACK_HANDSHAKE"
 
 # ------------------------
-# InfluxDB 1.8 info
+# InfluxDB 1.8 info (host access)
 # ------------------------
-INFLUX_HOST = "influxdb"
+INFLUX_HOST = "localhost"  # host accesses Docker container via localhost
 INFLUX_PORT = 8086
 INFLUX_USER = "admin"
 INFLUX_PASSWORD = "admin123"
@@ -33,69 +36,78 @@ influxdb_client = InfluxDBClient(
 # ------------------------
 # BLE notification handler
 # ------------------------
-handshake_verified = False
-ble_client_global = None
-
-async def send_ack():
+async def send_ack(ble_client):
     """Send ACK to sensor to complete handshake."""
-    if ble_client_global:
-        await ble_client_global.write_gatt_char(UART_RX_CHAR_UUID, (ACK_MESSAGE + "\r\n").encode("utf-8"))
-        print("Sent ACK_HANDSHAKE to sensor")
+    await ble_client.write_gatt_char(
+        UART_RX_CHAR_UUID, (ACK_MESSAGE + "\r\n").encode("utf-8")
+    )
+    print("Sent ACK_HANDSHAKE to sensor")
 
-def ble_notification_handler(sender, data):
-    global handshake_verified
-    message = data.decode("utf-8").strip()
-    
-    if not handshake_verified:
-        if EXPECTED_HANDSHAKE in message:
-            handshake_verified = True
-            print("Handshake verified from sensor")
-            asyncio.create_task(send_ack())  # send ACK back
-        else:
-            print(f"Ignoring unexpected handshake/data: {message}")
-        return
+def ble_notification_handler_factory(ble_client):
+    """Factory to create a notification handler with handshake state."""
+    handshake_verified = False
 
-    # Parse sensor data after handshake
-    try:
-        values = message.split(",")
-        if len(values) >= 5:
-            pH = float(values[0])
-            tds = float(values[1])
-            temperature = float(values[2])
-            humidity = float(values[3])
-            water_temp = float(values[4])
+    def handler(sender, data):
+        nonlocal handshake_verified
+        message = data.decode("utf-8").strip()
 
-            point = [{
-                "measurement": "sensor_data",
-                "fields": {
-                    "pH": pH,
-                    "TDS": tds,
-                    "temperature": temperature,
-                    "humidity": humidity,
-                    "water_temp": water_temp
-                }
-            }]
-            influxdb_client.write_points(point)
-            print(f"Stored data: {message}")
-    except Exception as e:
-        print(f"Error parsing/writing data: {e}")
+        # --------------------
+        # Handle handshake
+        # --------------------
+        if not handshake_verified:
+            if EXPECTED_HANDSHAKE in message:
+                handshake_verified = True
+                print("Handshake verified from sensor")
+                asyncio.create_task(send_ack(ble_client))
+            else:
+                print(f"Ignoring unexpected handshake/data: {message}")
+            return
+
+        # --------------------
+        # Handle sensor data
+        # --------------------
+        try:
+            values = message.split(",")
+            if len(values) >= 5:
+                pH = float(values[0])
+                tds = float(values[1])
+                temperature = float(values[2])
+                humidity = float(values[3])
+                water_temp = float(values[4])
+
+                point = [{
+                    "measurement": "sensor_data",
+                    "fields": {
+                        "pH": pH,
+                        "TDS": tds,
+                        "temperature": temperature,
+                        "humidity": humidity,
+                        "water_temp": water_temp
+                    }
+                }]
+                influxdb_client.write_points(point)
+                print(f"Stored data: {message}")
+        except Exception as e:
+            print(f"Error parsing/writing data: {e}")
+
+    return handler
 
 # ------------------------
 # BLE connect & listen loop
 # ------------------------
 async def connect_and_listen():
-    global handshake_verified, ble_client_global
     while True:
         try:
             print(f"Connecting to {DEVICE_ADDRESS}...")
             async with BleakClient(DEVICE_ADDRESS) as ble_client:
-                ble_client_global = ble_client
-                connected_status = await ble_client.is_connected()
-                if connected_status:
+                if await ble_client.is_connected():
                     print("Connected successfully!")
-                    handshake_verified = False  # reset handshake on new connection
-                    await ble_client.start_notify(UART_RX_CHAR_UUID, ble_notification_handler)
 
+                    # Reset handshake and assign handler
+                    handler = ble_notification_handler_factory(ble_client)
+                    await ble_client.start_notify(UART_RX_CHAR_UUID, handler)
+
+                    # Keep connection alive
                     while await ble_client.is_connected():
                         await asyncio.sleep(1)
 
@@ -110,7 +122,7 @@ async def connect_and_listen():
             await asyncio.sleep(5)
 
 # ------------------------
-# Main
+# Main entry
 # ------------------------
 if __name__ == "__main__":
     asyncio.run(connect_and_listen())
