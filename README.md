@@ -1,32 +1,38 @@
-# Feathersense Dashboard
+# IoT Gateway Device
 
-This project reads data from a Feathersense BLE sensor, writes it to InfluxDB, and visualizes it in Grafana.
+This repository sets up persistant containerized volumes for Grafana and InfluxDB, specifically for the ARM processor architecture on Raspberry Pi's running a 32Bit OS. The docker-compose.yml can be updated as necessary to enable one to prop-up these containers on a range of alternative hardware and operating systems.
+
+
+
 
 ## Setup
+### Grafana and Influx
 
 1. Install Docker and Docker Compose on your Raspberry Pi.
 2. Clone this repository.
-3. Build and run Grafana and InfluxDb Contaienrs
+3. Build and run Grafana and InfluxDb Contaienrs by running the following command from the pojrect root
 
    ```bash
    docker-compose up --build -d grafana influxdb
    ```
+   
+### The Gateway Reciever Script
 
-4. Create a python venv on your raspberry pi by running the following commands in your project root:
+1. Navigate into the ble_to_influx directory and run the following commands:
 
 ```bash
 $ python3 -m venv .
 $ source ./bin/activate   
 ```
 
-5. Next, instally necessary dependencies by running
+5. Install necessary dependencies by running 
 ```
 $ pip install -r requirements.txt
 ```
 
 6. Finally, start the gateway controller script:
 ```
-python3 gateway_controller/ble_to_influx/blew_to_influx2.py
+python3 ble_to_influx2.py
 ```
 
 Note: 
