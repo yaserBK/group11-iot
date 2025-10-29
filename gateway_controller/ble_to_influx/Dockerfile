@@ -1,10 +1,13 @@
-from --platform=linux/arm/v7 python:3.11-slim-bullseye
+FROM --platform=linux/arm/v7 python:3.11-slim-bullseye
 
-# Ensure BLE libraries are available
+# Install system dependencies for BLE + building Python packages
 RUN apt-get update && apt-get install -y \
     bluez \
     libbluetooth-dev \
     libglib2.0-dev \
+    gcc \
+    python3-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
