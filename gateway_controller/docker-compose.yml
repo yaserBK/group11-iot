@@ -2,6 +2,7 @@
 services:
   influxdb:
     image: influxdb:1.8
+    platform: linux/arm/v7
     container_name: influxdb
     restart: always
     ports:
@@ -14,7 +15,8 @@ services:
       - influxdb_data:/var/lib/influxdb
 
   grafana:
-    image: grafana/grafana-oss:9.9.0
+    image: grafana/grafana:8.5.25
+    platform: linux/arm/v7
     container_name: grafana
     restart: always
     ports:
